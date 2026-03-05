@@ -14,7 +14,6 @@ struct ContentView: View {
     @State private var showForm = false
     @State private var editVisita: Visita? = nil
     @State private var toast: ToastData? = nil
-    @State private var notifBanner: Visita? = nil
 
     private var filtradas: [Visita] {
         visitas
@@ -72,13 +71,6 @@ struct ContentView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(10)
             }
-
-            // Notification banner
-            if let v = notifBanner {
-                NotifBannerView(visita: v) { notifBanner = nil }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(11)
-            }
         }
         .sheet(isPresented: $showForm) {
             VisitaFormView(mode: .nova) { dados in
@@ -90,10 +82,9 @@ struct ContentView: View {
                 salvar(dados: dados, editando: v)
             }
         }
-        .onAppear { agendarBannerDemo() }
+        .onAppear { }
         .task { await NotificationManager.shared.checkAuthorizationStatus() }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: toast?.id)
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: notifBanner?.id)
     }
 
     // MARK: - Header
@@ -287,13 +278,6 @@ struct ContentView: View {
         }
     }
 
-    private func agendarBannerDemo() {
-        guard let primeira = visitas.first(where: { $0.isHoje && $0.notificacaoAgendada && !$0.isPassado })
-        else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation { notifBanner = primeira }
-        }
-    }
 }
 
 // MARK: - Supporting types
@@ -362,64 +346,3 @@ struct ToastView: View {
     }
 }
 
-// MARK: - Notification Banner
-
-struct NotifBannerView: View {
-    let visita: Visita
-    let onDismiss: () -> Void
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.brandOrange)
-                    .frame(width: 40, height: 40)
-                Text("🏠").font(.system(size: 20))
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Visitas Imóveis")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color.label)
-                Text("🏠 Visita em 1 hora!")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.label)
-                Text("Às \(visita.horaFormatada) em \(visita.endereco)")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.secondaryLabel)
-                    .lineLimit(1)
-
-                HStack(spacing: 12) {
-                    Button {
-                        if let url = visita.mapsURL { UIApplication.shared.open(url) }
-                        onDismiss()
-                    } label: {
-                        Text("Ver no Mapa")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color.brandBlue)
-                    }
-                    Text("|").foregroundStyle(Color.tertiaryLabel).font(.system(size: 12))
-                    Button { onDismiss() } label: {
-                        Text("Dispensar")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color.secondaryLabel)
-                    }
-                }
-                .padding(.top, 6)
-            }
-            Spacer()
-            Button { onDismiss() } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.secondaryLabel)
-            }
-        }
-        .padding(16)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.18), radius: 20, x: 0, y: 8)
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-}
